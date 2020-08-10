@@ -35,11 +35,7 @@ class BlenderHelperFunctions:
 
     @staticmethod
     def remove_all_objects():
-        try:
-            bpy.ops.object.mode_set(mode="OBJECT")
-        except Exception:
-            pass
-
+        BlenderHelperFunctions.force_object_mode()
         bpy.ops.object.select_all(action="SELECT")
         bpy.ops.object.delete(use_global=False, confirm=False)
 
@@ -380,3 +376,28 @@ class BlenderHelperFunctions:
             print("%s - %s (%s - %s)" % (
                 link.from_node.name, link.to_node.name, link.from_socket.name, link.to_socket.name
             ))
+
+    @staticmethod
+    def force_object_mode():
+        try:
+            bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            pass
+
+    @staticmethod
+    def create_text(text="Some text", width=3.5):
+        BlenderHelperFunctions.force_object_mode()
+
+        bpy.ops.object.text_add(enter_editmode=True, location=(0, 0, 0))
+        bpy.ops.font.delete(type="PREVIOUS_WORD")
+        bpy.ops.font.text_insert(text=text)
+        bpy.ops.object.editmode_toggle()
+
+        # Style the text
+        bpy.context.object.data.bevel_depth = 0.01
+        # Extrude
+        bpy.ops.transform.resize(value=(1, 1, width))
+        # Rotate to put the text up
+        bpy.ops.transform.rotate(value=1.5708, orient_axis='X', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)))
+
+

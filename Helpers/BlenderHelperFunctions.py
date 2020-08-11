@@ -400,4 +400,16 @@ class BlenderHelperFunctions:
         # Rotate to put the text up
         bpy.ops.transform.rotate(value=1.5708, orient_axis='X', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)))
 
+    @staticmethod
+    def reset_transforms():
+        bpy.ops.object.select_all(action='DESELECT')
+
+        for obj in bpy.data.objects:
+            obj.select_set(True)
+            bpy.ops.object.location_clear(clear_delta=False)
+            bpy.ops.object.rotation_clear(clear_delta=False)
+            bpy.ops.object.scale_clear(clear_delta=False)
+            bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+            obj.select_set(False)
+
 

@@ -412,4 +412,149 @@ class BlenderHelperFunctions:
             bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
             obj.select_set(False)
 
+    @staticmethod
+    def colorRGB_256(color):
+        return tuple(pow(float(c) / 255.0, 2.2) for c in color)
+
+    @staticmethod
+    def render_to_folder(renderFolder='rendering', renderName='render', resX=800, resY=800, resPercentage=100, animation=False, frame_end=None):
+        scn = bpy.context.scene
+        scn.render.resolution_x = resX
+        scn.render.resolution_y = resY
+        scn.render.resolution_percentage = resPercentage
+        if frame_end:
+            scn.frame_end = frame_end
+
+        print(bpy.context.space_data)
+
+        # Check if script is executed inside Blender
+        if bpy.context.space_data is None:
+            # Specify folder to save rendering and check if it exists
+            render_folder = os.path.join(os.getcwd(), renderFolder)
+            if not os.path.exists(render_folder):
+                os.mkdir(render_folder)
+
+            if animation:
+                # Render animation
+                scn.render.filepath = os.path.join(
+                    render_folder,
+                    renderName)
+                bpy.ops.render.render(animation=True)
+            else:
+                # Render still frame
+                scn.render.filepath = os.path.join(
+                    render_folder,
+                    renderName + '.png')
+                bpy.ops.render.render(write_still=True)
+
+    @staticmethod
+    def bmesh_to_obj(bm, name='Object'):
+        mesh = bpy.data.meshes.new(name+'Mesh')
+        bm.to_mesh(mesh)
+        bm.free()
+
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.scene.objects.link(obj)
+        bpy.context.scene.update()
+
+        return obj
+
+    @staticmethod
+    def target(origin=(0, 0, 0)):
+        tar = bpy.data.objects.new('Target', None)
+        bpy.context.scene.objects.link(tar)
+        tar.location = origin
+
+        return tar
+
+    @staticmethod
+    def camera(location, lens=35, clip_start=0.1, clip_end=200, cam_type='PERSP', ortho_scale=6):
+        # Create object and camera
+        camera = bpy.data.cameras.new("Camera")
+        camera.lens = lens
+        camera.clip_start = clip_start
+        camera.clip_end = clip_end
+
+        # 'PERSP', 'ORTHO', 'PANO'
+        camera.type = cam_type
+        if cam_type == 'ORTHO':
+            camera.ortho_scale = ortho_scale
+
+        # Link object to scene
+        obj = bpy.data.objects.new("CameraObj", camera)
+        obj.location = location
+        bpy.context.scene.objects.link(obj)
+        bpy.context.scene.camera = obj
+
+        return obj
+
+    @staticmethod
+    def lamp(location, lamp_type='POINT', energy=1, color=(1, 1, 1)):
+        # Lamp types: 'POINT', 'SUN', 'SPOT', 'HEMI', 'AREA'
+        bpy.ops.object.add(type='LAMP', location=location)
+        obj = bpy.context.object
+        obj.data.type = lamp_type
+        obj.data.energy = energy
+        obj.data.color = color
+
+        return obj
+
+    @staticmethod
+    def simple_scene(target_coord, camera_coord, sun_coord, lens=35):
+        tar = target(target_coord)
+        cam = camera(camera_coord, tar, lens)
+        sun = lamp(sun_coord, 'SUN', target=tar)
+
+        return tar, cam, sun
+
+    @staticmethod
+    def set_ambient_occlusion(ambient_occlusion=True, samples=5, blend_type='ADD'):
+        # blend_type options: 'ADD', 'MULTIPLY'
+        bpy.context.scene.world.light_settings.use_ambient_occlusion = ambient_occlusion
+        bpy.context.scene.world.light_settings.ao_blend_type = blend_type
+        bpy.context.scene.world.light_settings.samples = samples
+
+    @staticmethod
+    def set_smooth(obj, level=None, smooth=True):
+        if level:
+            # Add subsurf modifier
+            modifier = obj.modifiers.new('Subsurf', 'SUBSURF')
+            modifier.levels = level
+            modifier.render_levels = level
+
+        # Smooth surface
+        mesh = obj.data
+        for p in mesh.polygons:
+            p.use_smooth = smooth
+
+    @staticmethod
+    def rainbow_lights(r=5, n=100, freq=2, energy=0.1):
+        for i in range(n):
+            t = float(i)/float(n)
+            pos = (r*sin(tau*t), r*cos(tau*t), r*sin(freq*tau*t))
+
+            # Create lamp
+            bpy.ops.object.add(type='LAMP', location=pos)
+            obj = bpy.context.object
+            obj.data.type = 'POINT'
+
+            # Apply gamma correction for Blender
+            color = tuple(pow(c, 2.2) for c in colorsys.hsv_to_rgb(t, 0.6, 1))
+
+            # Set HSV color and lamp energy
+            obj.data.color = color
+            obj.data.energy = energy
+
+    @staticmethod
+    def remove_all(obj_type=None):
+        # Possible type: ‘MESH’, ‘CURVE’, ‘SURFACE’, ‘META’, ‘FONT’, ‘ARMATURE’, ‘LATTICE’, ‘EMPTY’, ‘CAMERA’, ‘LAMP’
+        if obj_type:
+            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.object.select_by_type(type=obj_type)
+            bpy.ops.object.delete()
+        else:
+            # Remove all elements in scene
+            bpy.ops.object.select_by_layer()
+            bpy.ops.object.delete(use_global=False)
+
 
